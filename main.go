@@ -2,27 +2,43 @@ package main
 
 import "fmt"
 
-type IBankAccount interface {
-	GetBalance() int // 100 = 1 dollar
-	Deposit(amount int)
-	Withraw(amount int) error
+// when
+// 1. when we need to update state
+// pointer 8bytes
+
+// 2. when we want to optimize the memory for Large objects that are getting called a lot.
+type User struct {
+	email    string
+	username string
+	age      int
+	file     []byte // ?? Large or small
+}
+
+func getUser() (User, error) {
+	return User{}, fmt.Errorf("foo")
+}
+
+// 8bytes
+func (u *User) Email() string {
+	return u.email
+}
+
+func (u *User) updateEmail(email string) {
+	u.email = email
+}
+
+// 1gb user size
+// x amount of bytes => sizeOf(user)
+func Email(user User) string {
+	return user.email
 }
 
 func main() {
-	myAccounts := []IBankAccount{
-		NewWallFargo(),
-		NewBitcoin(),
+	user := User{
+		email:    "test@test.com",
+		username: "Henry",
+		age:      22,
 	}
-
-	fmt.Println(myAccounts)
-
-	for _, account := range myAccounts {
-		account.Deposit(500)
-		if err := account.Withraw(400); err != nil {
-			fmt.Printf("ERR: %d\n", err)
-		}
-		balance := account.GetBalance()
-
-		fmt.Printf("balance = %d\n", balance)
-	}
+	user.updateEmail("fool@g.aol")
+	fmt.Println(user.Email())
 }
