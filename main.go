@@ -1,44 +1,38 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"time"
+	"gin-gorm/config"
+	"gin-gorm/controller"
+	"gin-gorm/helper"
+	"gin-gorm/model"
+	"gin-gorm/repository"
+	"gin-gorm/router"
+	"gin-gorm/service"
+	"net/http"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
 func main() {
-	server := gin.Default()
-	server.Use(cors.Default())
-	server.GET("/progress", func(ctx *gin.Context) {
-		ctx.Writer.Header().Set("Content-Type", "text/event-stream")
-		ctx.Writer.Header().Set("Cashe-Control", "no-cache")
-		ctx.Writer.Flush()
 
-		for i := 0; i < 100; i++ {
+	db := config.DatabaseConnection()
+	validate := validator.New()
 
-			ctx.Writer.Write([]byte(fmt.Sprintf("id: %d\n", i)))
-			ctx.Writer.Write([]byte("event: onPregress\n"))
-			data, _ := json.Marshal(gin.H{
-				"progressPercentage": i + 1,
-			})
-			ctx.Writer.Write([]byte(fmt.Sprintf("id: %d\n", data)))
-			ctx.Writer.Write([]byte("\n"))
-			time.Sleep(time.Second / 10)
+	db.Table("tags").AutoMigrate(&model.Tags{})
 
-		}
+	tagsRepository := repository.NewTagsRepositoryImpl(db)
 
-		ctx.Writer.Write([]byte("id: 100 \n"))
-		ctx.Writer.Write([]byte("event: done \n"))
-		ctx.Writer.Write([]byte("data: {} \n"))
-		ctx.Writer.Write([]byte("\n"))
-		ctx.Writer.Flush()
-	})
+	tagsService := service.NewTagsServiceImpl(tagsRepository, validate)
 
-	if err := server.Run("0.0.0.0:8000"); err != nil {
-		panic(err)
+	tagsController := controller.NewTagsController(tagsService)
+
+	routes := router.NewRouter(tagsController)
+
+	server := &http.Server{
+		Addr:    ":3000",
+		Handler: routes,
 	}
 
+	err := server.ListenAndServe()
+	helper.ErrorPanic(err)
 }
