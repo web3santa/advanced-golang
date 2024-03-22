@@ -1,44 +1,44 @@
 package main
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+	"time"
 
-// when
-// 1. when we need to update state
-// pointer 8bytes
-
-// 2. when we want to optimize the memory for Large objects that are getting called a lot.
-type User struct {
-	email    string
-	username string
-	age      int
-	file     []byte // ?? Large or small
-}
-
-func getUser() (User, error) {
-	return User{}, fmt.Errorf("foo")
-}
-
-// 8bytes
-func (u *User) Email() string {
-	return u.email
-}
-
-func (u *User) updateEmail(email string) {
-	u.email = email
-}
-
-// 1gb user size
-// x amount of bytes => sizeOf(user)
-func Email(user User) string {
-	return user.email
-}
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
 
 func main() {
-	user := User{
-		email:    "test@test.com",
-		username: "Henry",
-		age:      22,
+	server := gin.Default()
+	server.Use(cors.Default())
+	server.GET("/progress", func(ctx *gin.Context) {
+		ctx.Writer.Header().Set("Content-Type", "text/event-stream")
+		ctx.Writer.Header().Set("Cashe-Control", "no-cache")
+		ctx.Writer.Flush()
+
+		for i := 0; i < 100; i++ {
+
+			ctx.Writer.Write([]byte(fmt.Sprintf("id: %d\n", i)))
+			ctx.Writer.Write([]byte("event: onPregress\n"))
+			data, _ := json.Marshal(gin.H{
+				"progressPercentage": i + 1,
+			})
+			ctx.Writer.Write([]byte(fmt.Sprintf("id: %d\n", data)))
+			ctx.Writer.Write([]byte("\n"))
+			time.Sleep(time.Second / 10)
+
+		}
+
+		ctx.Writer.Write([]byte("id: 100 \n"))
+		ctx.Writer.Write([]byte("event: done \n"))
+		ctx.Writer.Write([]byte("data: {} \n"))
+		ctx.Writer.Write([]byte("\n"))
+		ctx.Writer.Flush()
+	})
+
+	if err := server.Run("0.0.0.0:8000"); err != nil {
+		panic(err)
 	}
-	user.updateEmail("fool@g.aol")
-	fmt.Println(user.Email())
+
 }
